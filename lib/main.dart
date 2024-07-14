@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutterapi/list.dart';
 
+// run DEV on Web, use command:
+// flutter run -d chrome --web-browser-flag "--disable-web-security"
+
 void main() {
   runApp(const MyApp());
 }
@@ -54,7 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     settings: const RouteSettings(
                       arguments: {
                         'title': 'ORIGIN Sites',
-                        'key': 'SITEID',
+                        'keyfield': 'SITEID',
                       },
                     ),
                   ),
@@ -71,7 +74,26 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 30),
             ElevatedButton(
               style: style,
-              onPressed: () {},
+              onPressed: () async {
+                final navback = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ListPage(),
+                    settings: const RouteSettings(
+                      arguments: {
+                        'title': 'ORIGIN Sites',
+                        'keyfield': 'JOBID',
+                      },
+                    ),
+                  ),
+                );
+                if (!context.mounted) return;
+                if (navback == null) return;
+                final showResult = navback as String;
+                ScaffoldMessenger.of(context)
+                  ..removeCurrentSnackBar()
+                  ..showSnackBar(SnackBar(content: Text(showResult)));
+              },
               child: const Text('Jobs'),
             ),
           ],

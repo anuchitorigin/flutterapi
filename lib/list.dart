@@ -13,46 +13,65 @@ class ListPage extends StatefulWidget {
 class _ListPageState extends State<ListPage> {
   var loading = 0;
   var title = '';
-  var key = '';
+  var keyfield = '';
+  var err = '';
   List result = [
-    {'INDEXID': '1', 'SITEID': 's1'},
-    {'INDEXID': '2', 'SITEID': 's2'},
-    {'INDEXID': '3', 'SITEID': 's3'},
-    {'INDEXID': '4', 'SITEID': 's4'},
-    {'INDEXID': '5', 'SITEID': 's5'},
-    {'INDEXID': '6', 'SITEID': 's6'},
-    {'INDEXID': '7', 'SITEID': 's7'},
-    {'INDEXID': '8', 'SITEID': 's8'},
-    {'INDEXID': '9', 'SITEID': 's9'},
-    {'INDEXID': '10', 'SITEID': 's10'},
+    // {'INDEXID': '1', 'SITEID': 's1'},
+    // {'INDEXID': '2', 'SITEID': 's2'},
+    // {'INDEXID': '3', 'SITEID': 's3'},
+    // {'INDEXID': '4', 'SITEID': 's4'},
+    // {'INDEXID': '5', 'SITEID': 's5'},
+    // {'INDEXID': '6', 'SITEID': 's6'},
+    // {'INDEXID': '7', 'SITEID': 's7'},
+    // {'INDEXID': '8', 'SITEID': 's8'},
+    // {'INDEXID': '9', 'SITEID': 's9'},
+    // {'INDEXID': '10', 'SITEID': 's10'},
   ];
 
   Future<dynamic> postSQL(String sql) async {
-    final response = await http.get(
-      // Uri.parse('http://localhost:55016/datasnap/rest/TServerMethods2/query/sql'),
-      Uri.parse('https://jsonplaceholder.typicode.com/posts/1'),
-      // headers: <String, String>{
-      //   'Content-Type': 'application/json; charset=UTF-8',
-      // },
-      // body: jsonEncode(<String, String>{
-      //   'sql': sql,
-      // }),
-    );
-    final res = jsonDecode(response.body);
-    print(res);
-
-    if ([200, 201].contains(response.statusCode)) {
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:55016/datasnap/rest/TServerMethods2/query/sql'),
+        // GET Uri.parse('https://jsonplaceholder.typicode.com/posts/1'),
+        headers: <String, String>{
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Accept': '*/*'
+        },
+        body: jsonEncode(<String, String>{
+          'sql': sql,
+        }),
+      );
+      final res = jsonDecode(response.body);
+      // print(res);
+      if ([200, 201].contains(response.statusCode)) {
+        var status = res['result'][0]['status'];
+        if (status == 1) {
+          setState(() {
+            loading = 2;
+            err = '';
+            result = res['result'][0]['result'];
+          });
+          return;
+        } else {
+          setState(() {
+            loading = 3;
+            err = res['result'][0]['message'];
+            result = [];
+          });
+          return;
+        }
+      } else {
+        setState(() {
+          loading = 3;
+          err = 'connection error';
+          result = [];
+        });
+      }
+    } catch (e) {
       setState(() {
-        loading = 2;
-        // print(res['result'][0]['result']);
-        // result = [
-        //   {'INDEXID': 'INDEXID', 'SITEID': 'SITEID'},
-        // ];
-        // result = res[0]['result'];
-      });
-    } else {
-      setState(() {
-        loading = 2;
+        loading = 3;
+        err = e.toString();
         result = [];
       });
     }
@@ -60,71 +79,73 @@ class _ListPageState extends State<ListPage> {
 
   Widget itemList() {
     if (loading < 2) {
-      return const CircularProgressIndicator();
+      return const Center(child: CircularProgressIndicator());
     } else {
-      return result.isEmpty
-          ? const Text('No data found')
-          : SizedBox(
-              height: 300.0,
-              child: ListView.builder(
-                scrollDirection: Axis.vertical,
-                shrinkWrap: true,
-                itemCount: result.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(result[index]['INDEXID']),
-                    subtitle: Text(result[index]['SITEID']),
-                  );
-                },
-              ),
+      switch (loading) {
+        case 2:
+          return result.isEmpty
+            ? const Center(child: Text('No data found'))
+            : ListView.builder(
+              scrollDirection: Axis.vertical,
+              shrinkWrap: true,
+              itemCount: result.length,
+              itemBuilder: (context, index) {
+                var item = result[index];
+                return ListTile(
+                  title: Text("${item['INDEXID']}  ${item[keyfield]}"),
+                );
+              },
             );
+        default:
+          return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      textStyle: const TextStyle(fontSize: 20),
+                    ),
+                    onPressed: () {
+                      // Navigator.pop(context, 'BACK from "$title"');
+                      setState(() {
+                        loading = 0;
+                        result = [];
+                      });
+                    },
+                    child: const Text('Reload'),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(err),
+                ],
+              );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final ButtonStyle style =
-        ElevatedButton.styleFrom(textStyle: const TextStyle(fontSize: 20));
-    final arg =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final arg = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
 
     title = arg['title'];
-    key = arg['key'];
+    keyfield = arg['keyfield'];
 
     if (loading == 0) {
-      postSQL('SELECT TOP 10 * FROM sites;');
+      switch (keyfield) {
+        case 'SITEID':
+          postSQL('SELECT TOP 10 * FROM sites;');
+          break;
+        default:
+          postSQL('SELECT TOP 10 * FROM job;');
+      }
       loading = 1;
     }
-    // switch (key) {
-    //   case 'SITEID':
-    //     postSQL('SELECT TOP 10 * FROM sites;');
-    //     break;
-    //   default:
-    //     postSQL('SELECT TOP 10 * FROM job;');
-    // }
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            const SizedBox(height: 30),
-            Center(child: itemList()),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              style: style,
-              onPressed: () {
-                Navigator.pop(context, 'BACK from "$title"');
-              },
-              child: const Text('Back'),
-            ),
-          ],
-        ),
-      ),
+      body: itemList(),
     );
   }
 }
